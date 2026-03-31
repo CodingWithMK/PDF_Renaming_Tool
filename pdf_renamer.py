@@ -1,29 +1,122 @@
+from __future__ import annotations
+
 import os
 import re
 import string
 from collections import Counter
-from PyPDF2 import PdfReader
-import nltk
-from nltk.corpus import stopwords
-from nltk import pos_tag, word_tokenize
+from pathlib import Path
+
 from langdetect import detect
+from nltk import pos_tag, word_tokenize
+from nltk.corpus import stopwords
+from PyPDF2 import PdfReader
 from tqdm import tqdm
 
-nltk.download('stopwords')
-nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')
+import nltk
 
-custom_stopwords_tr = set([
-    'için', 'olarak', 'veya', 've', 'ile', 'ama', 'fakat', 'ancak', 'gibi', 'daha', 'çok', 'az', 'her', 'bir', 'bu', 'şu', 'o', 'da', 'de', 'ki', 'mı', 'mi', 'mu', 'mü', 'ya', 'ise', 'en', 'sonra', 'önce', 'kadar', 'göre', 'üzere', 'içinde', 'üzerine', 'arasında', 'tarafından', 'hakkında', 'karşı', 'iç', 'dış', 'altında', 'üstünde', 'yanında'
-])
-custom_stopwords_en = set([
-    'fig', 'figure', 'table', 'page', 'pages', 'chapter', 'etc', 'ie', 'eg', 'also', 'one', 'two', 'three',
-    'may', 'can', 'must', 'should', 'could', 'would', 'however', 'thus', 'therefore', 'et', 'al', 'use', 'used',
-    'using', 'based', 'within', 'among', 'per', 'via', 'see', 'shown', 'solution', 'solutions'
-])
+nltk.download("stopwords")
+nltk.download("punkt")
+nltk.download("averaged_perceptron_tagger")
 
-def extract_text_from_pdf(pdf_path, max_pages=3):
-    """Extract raw text from a given number of starting pages."""
+custom_stopwords_tr = set(
+    [
+        "için",
+        "olarak",
+        "veya",
+        "ve",
+        "ile",
+        "ama",
+        "fakat",
+        "ancak",
+        "gibi",
+        "daha",
+        "çok",
+        "az",
+        "her",
+        "bir",
+        "bu",
+        "şu",
+        "o",
+        "da",
+        "de",
+        "ki",
+        "mı",
+        "mi",
+        "mu",
+        "mü",
+        "ya",
+        "ise",
+        "en",
+        "sonra",
+        "önce",
+        "kadar",
+        "göre",
+        "üzere",
+        "içinde",
+        "üzerine",
+        "arasında",
+        "tarafından",
+        "hakkında",
+        "karşı",
+        "iç",
+        "dış",
+        "altında",
+        "üstünde",
+        "yanında",
+    ]
+)
+custom_stopwords_en = set(
+    [
+        "fig",
+        "figure",
+        "table",
+        "page",
+        "pages",
+        "chapter",
+        "etc",
+        "ie",
+        "eg",
+        "also",
+        "one",
+        "two",
+        "three",
+        "may",
+        "can",
+        "must",
+        "should",
+        "could",
+        "would",
+        "however",
+        "thus",
+        "therefore",
+        "et",
+        "al",
+        "use",
+        "used",
+        "using",
+        "based",
+        "within",
+        "among",
+        "per",
+        "via",
+        "see",
+        "shown",
+        "solution",
+        "solutions",
+    ]
+)
+
+
+def extract_text_from_pdf(pdf_path: str | Path, max_pages: int = 3) -> str:
+    """Extract raw text from a given number of starting pages.
+
+    Args:
+        pdf_path: Path to the PDF file.
+        max_pages: Maximum number of pages to extract text from.
+
+    Returns:
+        Concatenated text from the first max_pages pages.
+    """
     text = ""
     try:
         reader = PdfReader(pdf_path)
@@ -34,10 +127,17 @@ def extract_text_from_pdf(pdf_path, max_pages=3):
         print(f"Error reading {pdf_path}: {e}")
     return text
 
-def extract_title_candidate(pdf_path, max_pages=3):
+
+def extract_title_candidate(pdf_path: str | Path, max_pages: int = 3) -> str | None:
     """
     Try to extract a probable title from the first max_pages pages.
-    Returns title (string) if successful, otherwise None.
+
+    Args:
+        pdf_path: Path to the PDF file.
+        max_pages: Maximum number of pages to search for a title.
+
+    Returns:
+        Title string if successful, otherwise None.
     """
     title = None
     try:
@@ -48,7 +148,7 @@ def extract_title_candidate(pdf_path, max_pages=3):
             page_text = reader.pages[i].extract_text()
             if not page_text:
                 continue
-            page_lines = page_text.split('\n')
+            page_lines = page_text.split("\n")
             # Filter out completely empty lines and short lines
             page_lines = [line.strip() for line in page_lines if len(line.strip()) >= 6]
             lines.extend(page_lines)
@@ -56,8 +156,7 @@ def extract_title_candidate(pdf_path, max_pages=3):
         if lines:
             # Option 1: Prefer the first long line
             probable_titles = [
-                l for l in lines 
-                if (8 < len(l) < 140) and not l.isupper()
+                l for l in lines if (8 < len(l) < 140) and not l.isupper()
             ]
             if probable_titles:
                 # Option 2: Prefer the line with the most "significant" words
@@ -68,34 +167,73 @@ def extract_title_candidate(pdf_path, max_pages=3):
         print(f"Error reading {pdf_path}: {e}")
     return title
 
-def clean_and_tokenize(text, lang):
+
+def clean_and_tokenize(text: str, lang: str) -> list[str]:
+    """Tokenize text and remove stopwords based on language.
+
+    Args:
+        text: Raw text to tokenize.
+        lang: ISO 639-1 language code (e.g., 'en', 'tr').
+
+    Returns:
+        List of filtered tokens.
+    """
     text = text.lower()
     text = re.sub(f"[{re.escape(string.punctuation)}]", " ", text)
     words = word_tokenize(text)
-    if lang == 'tr':
-        stop_words = set(stopwords.words('turkish')).union(custom_stopwords_tr)
+    if lang == "tr":
+        stop_words = set(stopwords.words("turkish")).union(custom_stopwords_tr)
     else:
-        stop_words = set(stopwords.words('english')).union(custom_stopwords_en)
+        stop_words = set(stopwords.words("english")).union(custom_stopwords_en)
     words = [w for w in words if w.isalpha() and w not in stop_words and len(w) > 3]
     return words
 
-def get_top_nouns_en(words, n=4):
+
+def get_top_nouns_en(words: list[str], n: int = 4) -> list[str]:
+    """Extract top N nouns from English text using POS tagging.
+
+    Args:
+        words: List of tokenized words.
+        n: Number of top nouns to return.
+
+    Returns:
+        List of top N nouns by frequency.
+    """
     tagged = pos_tag(words)
-    nouns = [word for word, pos in tagged if pos.startswith('NN')]
+    nouns = [word for word, pos in tagged if pos.startswith("NN")]
     counter = Counter(nouns)
     most_common = [word for word, _ in counter.most_common(n)]
     return most_common
 
-def get_top_words_tr(words, n=4):
+
+def get_top_words_tr(words: list[str], n: int = 4) -> list[str]:
+    """Extract top N words from Turkish text by frequency.
+
+    Args:
+        words: List of tokenized words.
+        n: Number of top words to return.
+
+    Returns:
+        List of top N words by frequency.
+    """
     counter = Counter(words)
     most_common = [word for word, _ in counter.most_common(n)]
     return most_common
 
-def slugify(text, lang):
-    """Make a string safe for filenames, keep Turkish special chars if needed."""
-    text = text.strip().replace(' ', '_')
+
+def slugify(text: str, lang: str) -> str:
+    """Make a string safe for filenames, keep Turkish special chars if needed.
+
+    Args:
+        text: Text to slugify.
+        lang: ISO 639-1 language code (e.g., 'en', 'tr').
+
+    Returns:
+        Filename-safe string.
+    """
+    text = text.strip().replace(" ", "_")
     # Remove unwanted chars that can't be in filenames
-    text = re.sub(r'[<>:"/\\|?*]', '', text)
+    text = re.sub(r'[<>:"/\\|?*]', "", text)
     # Optionally, transliterate Turkish chars (uncomment if you want Latin only)
     # if lang == 'tr':
     #     replacements = {'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u'}
@@ -103,7 +241,15 @@ def slugify(text, lang):
     #         text = text.replace(src, tgt)
     return text
 
-def rename_pdf(pdf_path, new_name, directory):
+
+def rename_pdf(pdf_path: str | Path, new_name: str, directory: str | Path) -> None:
+    """Rename a PDF file with collision-safe suffixing.
+
+    Args:
+        pdf_path: Path to the original PDF file.
+        new_name: Desired filename without extension.
+        directory: Target directory for the renamed file.
+    """
     ext = ".pdf"
     new_filename = f"{new_name}{ext}"
     new_filepath = os.path.join(directory, new_filename)
@@ -115,8 +261,15 @@ def rename_pdf(pdf_path, new_name, directory):
     os.rename(pdf_path, new_filepath)
     print(f"Renamed to: {new_filename}")
 
-def main(directory, max_pages=3):
-    pdf_files = [f for f in os.listdir(directory) if f.lower().endswith('.pdf')]
+
+def main(directory: str | Path, max_pages: int = 3) -> None:
+    """Process all PDFs in a directory and rename based on content.
+
+    Args:
+        directory: Path to the directory containing PDFs.
+        max_pages: Maximum number of pages to extract text from.
+    """
+    pdf_files = [f for f in os.listdir(directory) if f.lower().endswith(".pdf")]
     for pdf_file in tqdm(pdf_files, desc="Processing PDFs"):
         pdf_path = os.path.join(directory, pdf_file)
         first_text = extract_text_from_pdf(pdf_path, max_pages)
@@ -126,7 +279,7 @@ def main(directory, max_pages=3):
         try:
             lang = detect(first_text)
         except Exception:
-            lang = 'en'
+            lang = "en"
         # Try to extract title from the first pages
         title_candidate = extract_title_candidate(pdf_path, max_pages)
         if title_candidate:
@@ -138,7 +291,7 @@ def main(directory, max_pages=3):
         if not words:
             print(f"No valid words found in {pdf_file}, skipping.")
             continue
-        if lang == 'tr':
+        if lang == "tr":
             top_words = get_top_words_tr(words, n=4)
         else:
             top_words = get_top_nouns_en(words, n=4)
@@ -149,6 +302,7 @@ def main(directory, max_pages=3):
             rename_pdf(pdf_path, new_name, directory)
         else:
             print(f"No significant words found in {pdf_file}, skipping.")
+
 
 if __name__ == "__main__":
     directory = "./pdfs"
