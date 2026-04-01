@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.pdf_renamer.models import PdfDocument, RenameResult, RenamerConfig
+from src.pdf_renamer.models import PdfDocument, RenamerConfig, RenameResult
 
 
 class TestRenamerConfig:
@@ -78,9 +78,14 @@ class TestPdfDocument:
         doc = PdfDocument(path=Path("/test.pdf"), num_pages=0, pages=[])
         assert doc.all_text() == ""
 
-    @patch("PyPDF2.PdfReader")
-    def test_load_extracts_pages(self, mock_reader_cls: MagicMock) -> None:
+    @patch("pypdf.PdfReader")
+    @patch.object(Path, "exists", return_value=True)
+    @patch.object(Path, "stat")
+    def test_load_extracts_pages(
+        self, mock_stat: MagicMock, mock_exists: MagicMock, mock_reader_cls: MagicMock
+    ) -> None:
         """Test that load() opens PDF and extracts text from pages."""
+        mock_stat.return_value.st_size = 1024
         mock_reader = MagicMock()
         mock_reader.pages = [MagicMock(), MagicMock(), MagicMock()]
         mock_reader.pages[0].extract_text.return_value = "Page 1"
@@ -94,9 +99,14 @@ class TestPdfDocument:
         assert doc.pages == ["Page 1", "Page 2", "Page 3"]
         assert doc.path == Path("/test.pdf")
 
-    @patch("PyPDF2.PdfReader")
-    def test_load_respects_max_pages(self, mock_reader_cls: MagicMock) -> None:
+    @patch("pypdf.PdfReader")
+    @patch.object(Path, "exists", return_value=True)
+    @patch.object(Path, "stat")
+    def test_load_respects_max_pages(
+        self, mock_stat: MagicMock, mock_exists: MagicMock, mock_reader_cls: MagicMock
+    ) -> None:
         """Test that load() respects max_pages limit."""
+        mock_stat.return_value.st_size = 1024
         mock_reader = MagicMock()
         mock_reader.pages = [MagicMock() for _ in range(10)]
         for i, page in enumerate(mock_reader.pages):
@@ -109,9 +119,14 @@ class TestPdfDocument:
         assert len(doc.pages) == 2  # Only 2 extracted
         assert doc.pages == ["Page 0", "Page 1"]
 
-    @patch("PyPDF2.PdfReader")
-    def test_load_handles_none_text(self, mock_reader_cls: MagicMock) -> None:
+    @patch("pypdf.PdfReader")
+    @patch.object(Path, "exists", return_value=True)
+    @patch.object(Path, "stat")
+    def test_load_handles_none_text(
+        self, mock_stat: MagicMock, mock_exists: MagicMock, mock_reader_cls: MagicMock
+    ) -> None:
         """Test that load() handles pages that return None for text."""
+        mock_stat.return_value.st_size = 1024
         mock_reader = MagicMock()
         mock_reader.pages = [MagicMock(), MagicMock()]
         mock_reader.pages[0].extract_text.return_value = None
@@ -121,3 +136,18 @@ class TestPdfDocument:
         doc = PdfDocument.load(Path("/test.pdf"), max_pages=2)
 
         assert doc.pages == ["", "Real text"]
+
+    def test_load_raises_on_missing_file(self) -> None:
+        """Test that load() raises FileNotFoundError for non-existent file."""
+        with pytest.raises(FileNotFoundError):
+            PdfDocument.load(Path("/nonexistent/file.pdf"), max_pages=3)
+
+    @patch.object(Path, "exists", return_value=True)
+    @patch.object(Path, "stat")
+    def test_load_raises_on_empty_file(
+        self, mock_stat: MagicMock, mock_exists: MagicMock
+    ) -> None:
+        """Test that load() raises ValueError for empty file."""
+        mock_stat.return_value.st_size = 0
+        with pytest.raises(ValueError, match="empty"):
+            PdfDocument.load(Path("/empty.pdf"), max_pages=3)

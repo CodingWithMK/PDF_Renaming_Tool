@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.pdf_renamer.naming.base import ProcessingContext
+from src.pdf_renamer.naming.keyword import KeywordNamingStrategy
 from src.pdf_renamer.naming.slugifier import Slugifier
 from src.pdf_renamer.naming.title import TitleNamingStrategy
-from src.pdf_renamer.naming.keyword import KeywordNamingStrategy
-from src.pdf_renamer.tokenization.registry import TokenizerRegistry
 from src.pdf_renamer.tokenization.english import EnglishTokenizer
 from src.pdf_renamer.tokenization.german import GermanTokenizer
+from src.pdf_renamer.tokenization.registry import TokenizerRegistry
 
 
 class TestSlugifier:

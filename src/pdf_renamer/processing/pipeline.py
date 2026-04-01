@@ -8,10 +8,10 @@ from pathlib import Path
 
 from src.pdf_renamer.extraction.base import TextExtractor
 from src.pdf_renamer.language.detector import LanguageDetector
+from src.pdf_renamer.models import PdfDocument
 from src.pdf_renamer.naming.base import NamingResult, ProcessingContext
 from src.pdf_renamer.naming.keyword import KeywordNamingStrategy
 from src.pdf_renamer.naming.title import TitleNamingStrategy
-from src.pdf_renamer.naming.slugifier import Slugifier
 from src.pdf_renamer.processing.renamer import FileRenamer, RenameResult
 
 logger = logging.getLogger(__name__)
@@ -38,9 +38,9 @@ class PdfProcessor:
     """Processes a single PDF file through the full pipeline.
 
     Pipeline steps:
-    1. Extract text from the PDF
+    1. Extract text from the PDF (cached via PdfDocument)
     2. Detect language
-    3. Extract title candidate
+    3. Extract title candidate from cached pages
     4. Generate filename using naming strategies
     5. Rename the file
     """
@@ -78,8 +78,10 @@ class PdfProcessor:
         Returns:
             ProcessingResult with operation status.
         """
-        # Step 1: Extract text
-        text = self._extractor.extract(path, max_pages)
+        # Step 1: Extract PDF document (single read, cached pages)
+        doc = self._extractor.extract_document(path, max_pages)
+        text = doc.all_text()
+
         if not text.strip():
             logger.info("No text found in %s, skipping", path.name)
             return ProcessingResult(source_path=path, reason="no text")
@@ -88,8 +90,8 @@ class PdfProcessor:
         language = self._detector.detect(text)
         logger.debug("Detected language '%s' for %s", language, path.name)
 
-        # Step 3: Extract title candidate
-        title_candidate = self._extract_title_candidate(path, max_pages)
+        # Step 3: Extract title candidate from cached pages
+        title_candidate = self._extract_title_candidate_from_doc(doc)
 
         # Step 4: Build context
         context = ProcessingContext(
@@ -114,49 +116,39 @@ class PdfProcessor:
             rename_result=rename_result,
         )
 
-    def _extract_title_candidate(self, path: Path, max_pages: int = 3) -> str | None:
-        """Extract a probable title from the PDF.
+    def _extract_title_candidate_from_doc(self, doc: PdfDocument) -> str | None:
+        """Extract a probable title from cached PDF pages.
+
+        Uses the already-extracted page texts from PdfDocument to avoid
+        re-reading the PDF file.
 
         Args:
-            path: Path to the PDF file.
-            max_pages: Maximum pages to search.
+            doc: PdfDocument with cached page texts.
 
         Returns:
             Title string if found, None otherwise.
         """
-        try:
-            from PyPDF2 import PdfReader
+        lines: list[str] = []
 
-            reader = PdfReader(str(path))
-            num_pages = min(len(reader.pages), max_pages)
-            lines: list[str] = []
+        for page_text in doc.pages:
+            if not page_text:
+                continue
+            page_lines = page_text.split("\n")
+            filtered = [line.strip() for line in page_lines if len(line.strip()) >= 6]
+            lines.extend(filtered)
 
-            for i in range(num_pages):
-                page_text = reader.pages[i].extract_text()
-                if not page_text:
-                    continue
-                page_lines = page_text.split("\n")
-                filtered = [
-                    line.strip() for line in page_lines if len(line.strip()) >= 6
-                ]
-                lines.extend(filtered)
-
-            if not lines:
-                return None
-
-            # Prefer first non-uppercase line of reasonable length
-            probable_titles = [
-                line for line in lines if (8 < len(line) < 140) and not line.isupper()
-            ]
-            if probable_titles:
-                return probable_titles[0]
-
-            # Fallback to longest line
-            return max(lines, key=len)
-
-        except Exception as e:
-            logger.warning("Error extracting title from %s: %s", path, e)
+        if not lines:
             return None
+
+        # Prefer first non-uppercase line of reasonable length
+        probable_titles = [
+            line for line in lines if (8 < len(line) < 140) and not line.isupper()
+        ]
+        if probable_titles:
+            return probable_titles[0]
+
+        # Fallback to longest line
+        return max(lines, key=len)
 
     def _try_naming_strategies(self, context: ProcessingContext) -> NamingResult | None:
         """Try naming strategies in priority order.

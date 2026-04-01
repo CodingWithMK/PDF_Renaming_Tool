@@ -44,9 +44,15 @@ class LangdetectDetector(LanguageDetector):
             ISO 639-1 language code, defaults to 'en' on failure.
         """
         try:
-            from langdetect import detect
+            from langdetect import (
+                detect as langdetect_detect,  # type: ignore[import-untyped]
+            )
 
-            return detect(text)
+            result = langdetect_detect(text)
+            # Validate result is a string (langdetect returns Any)
+            if not isinstance(result, str):
+                raise ValueError(f"Invalid language detection result: {result}")
+            return result
         except Exception as e:
             logger.warning("Language detection failed: %s, defaulting to 'en'", e)
             return "en"

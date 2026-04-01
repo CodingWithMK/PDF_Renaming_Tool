@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
-
+from src.pdf_renamer.processing.pipeline import ProcessingResult
 from src.pdf_renamer.processing.renamer import FileRenamer, RenameResult
-from src.pdf_renamer.processing.pipeline import PdfProcessor, ProcessingResult
 
 
 class TestFileRenamer:

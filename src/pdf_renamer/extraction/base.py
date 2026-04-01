@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.pdf_renamer.models import PdfDocument
 
 
 class TextExtractor(ABC):
@@ -23,6 +27,22 @@ class TextExtractor(ABC):
 
         Returns:
             Concatenated text from the extracted pages.
+        """
+        ...
+
+    @abstractmethod
+    def extract_document(self, path: Path, max_pages: int = 3) -> PdfDocument:
+        """Extract a PDF document with cached page texts.
+
+        This method opens the PDF once and returns a PdfDocument object
+        with all page texts cached, avoiding duplicate reads.
+
+        Args:
+            path: Path to the PDF file.
+            max_pages: Maximum number of pages to extract.
+
+        Returns:
+            PdfDocument with cached page texts.
         """
         ...
 

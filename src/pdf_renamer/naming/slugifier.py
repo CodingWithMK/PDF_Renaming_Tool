@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 
-
 # Optional transliteration for German characters
 GERMAN_TRANSLITERATION: dict[str, str] = {
     "ä": "ae",

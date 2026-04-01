@@ -6,8 +6,6 @@ import re
 import string
 from abc import ABC, abstractmethod
 
-from nltk import word_tokenize
-
 
 class Tokenizer(ABC):
     """Abstract tokenizer for language-specific text processing.

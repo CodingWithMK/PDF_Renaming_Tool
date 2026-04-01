@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
-
-import pytest
 
 from pdf_renamer import rename_pdf
 

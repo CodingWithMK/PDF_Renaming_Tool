@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from collections import Counter
 
-from nltk import word_tokenize
-from nltk.corpus import stopwords
+from nltk import word_tokenize  # type: ignore[import-untyped]
+from nltk.corpus import stopwords  # type: ignore[import-untyped]
 
 from src.pdf_renamer.tokenization.base import Tokenizer
 from src.pdf_renamer.tokenization.stopwords import CUSTOM_STOPWORDS_TR

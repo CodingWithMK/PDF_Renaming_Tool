@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -46,6 +49,9 @@ class PdfDocument:
     def load(cls, path: Path, max_pages: int = 3) -> PdfDocument:
         """Load a PDF and cache text from the first max_pages pages.
 
+        Validates that the file exists and is not empty before attempting
+        to read.
+
         Args:
             path: Path to the PDF file.
             max_pages: Maximum number of pages to extract.
@@ -55,8 +61,19 @@ class PdfDocument:
 
         Raises:
             FileNotFoundError: If the PDF file does not exist.
+            ValueError: If the PDF file is empty.
         """
-        from PyPDF2 import PdfReader
+        from pypdf import PdfReader
+
+        # Validate file exists
+        if not path.exists():
+            logger.error("PDF file not found: %s", path)
+            raise FileNotFoundError(f"PDF file not found: {path}")
+
+        # Validate file is not empty
+        if path.stat().st_size == 0:
+            logger.warning("PDF file is empty: %s", path)
+            raise ValueError(f"PDF file is empty: {path}")
 
         reader = PdfReader(str(path))
         total = len(reader.pages)

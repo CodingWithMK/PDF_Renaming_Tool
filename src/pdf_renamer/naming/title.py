@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import re
-
 from src.pdf_renamer.naming.base import NamingResult, NamingStrategy, ProcessingContext
 from src.pdf_renamer.naming.slugifier import Slugifier
 
@@ -42,10 +40,7 @@ class TitleNamingStrategy(NamingStrategy):
             return False
 
         # Skip all-uppercase titles (likely headers/metadata)
-        if title.isupper():
-            return False
-
-        return True
+        return not title.isupper()
 
     def generate(self, context: ProcessingContext) -> NamingResult | None:
         """Generate a filename from the title candidate.
@@ -59,7 +54,10 @@ class TitleNamingStrategy(NamingStrategy):
         if not self.can_handle(context):
             return None
 
-        title = context.title_candidate  # type: ignore[assignment]
+        # After can_handle() returns True, title_candidate is guaranteed to be str
+        title = context.title_candidate
+        assert title is not None  # Type guard for type checker
+
         slug = self._slugifier.sanitize(title, context.language)
 
         return NamingResult(name=slug, strategy_used="title")

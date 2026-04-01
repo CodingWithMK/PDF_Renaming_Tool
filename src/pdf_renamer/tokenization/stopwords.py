@@ -175,7 +175,6 @@ CUSTOM_STOPWORDS_DE: set[str] = {
     "dies",
     "diesen",
     "diesem",
-    "dieser",
     "alle",
     "jede",
     "jeder",

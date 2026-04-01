@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from src.pdf_renamer.language.detector import LangdetectDetector
 
 
