@@ -1,0 +1,107 @@
+#########################
+# Python artifacts
+#########################
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+*.egg
+*.whl
+
+#########################
+# Test / coverage
+#########################
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+
+#########################
+# Tool caches
+#########################
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.cache/
+
+#########################
+# Editor / OS files
+#########################
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+desktop.ini
+
+#########################
+# Logs
+#########################
+*.log
+rename.log
+
+#########################
+# NLTK / NLP data and other large data
+#########################
+nltk_data/
+
+#########################
+# Node / front-end
+#########################
+node_modules/
+.opencode/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+bun.lock
+
+#########################
+# Secrets / local config
+#########################
+.env
+.env.*
+secrets.*
+credentials.*
+*.pem
+*.key
+
+#########################
+# Binary artifacts
+#########################
+*.so
+*.dylib
+*.dll
+
+#########################
+# Notebooks
+#########################
+.ipynb_checkpoints
+
+#########################
+# Project specific: do not keep generated docs or PDFs in repo
+#########################
+docs/
+pdfs/
+
+# Project egg-info (local build artifacts)
+pdf_renaming_tool.egg-info/
+
+#########################
+# Temporary / swap
+#########################
+*.tmp
+*.swp
